@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Угадай число</title>
+<style>
+  /* ===== CSS: внешний вид ===== */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 30% 20%, #1d2b4a, #0d1117 70%);
+    color: #e6e9ef;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    padding: 20px;
+  }
+
+  .card {
+    width: min(460px, 100%);
+    background: rgba(26, 31, 43, 0.92);
+    border: 1px solid #2a3244;
+    border-radius: 18px;
+    padding: 28px 26px 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    text-align: center;
+  }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 650;
+  }
+
+  .subtitle {
+    margin: 0 0 22px;
+    color: #8b94a7;
+    font-size: 14px;
+  }
+
+  .row {
+    display: flex;
+    gap: 10px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    background: #12151c;
+    border: 1px solid #2a3244;
+    border-radius: 10px;
+    color: #e6e9ef;
+    padding: 12px 14px;
+    font-size: 18px;
+    text-align: center;
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  input:focus { border-color: #4f9cf9; }
+  input::placeholder { color: #4a5364; }
+
+  button {
+    border: 0;
+    border-radius: 10px;
+    background: #4f9cf9;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 650;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: filter .15s, transform .05s;
+  }
+
+  button:hover { filter: brightness(1.1); }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: .45; cursor: default; filter: none; }
+
+  .hint {
+    min-height: 58px;
+    margin: 20px 0 8px;
+    font-size: 19px;
+    line-height: 1.4;
+    display: grid;
+    place-items: center;
+  }
+
+  .hint.up   { color: #ffb454; }
+  .hint.down { color: #5aa9f7; }
+  .hint.win  { color: #57c98b; font-weight: 650; }
+  .hint.bad  { color: #ff6b6b; }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    color: #8b94a7;
+    font-size: 13px;
+    border-top: 1px solid #2a3244;
+    padding-top: 14px;
+    margin-top: 6px;
+  }
+
+  .meta b { color: #e6e9ef; font-weight: 600; }
+
+  .restart {
+    margin-top: 18px;
+    background: transparent;
+    border: 1px solid #2a3244;
+    color: #8b94a7;
+    font-weight: 500;
+    padding: 10px 18px;
+    display: none;
+  }
+
+  .restart:hover { color: #e6e9ef; border-color: #4f9cf9; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Угадай число</h1>
+  <p class="subtitle">Я загадал число от 1 до 1000. Найди его.</p>
+
+  <div class="row">
+    <input id="guess" type="number" min="1" max="1000" placeholder="Твоё число" autocomplete="off">
+    <button id="check">Проверить</button>
+  </div>
+
+  <div id="hint" class="hint">Введи число и нажми «Проверить»</div>
+
+  <div class="meta">
+    <span>Попыток: <b id="attempts">0</b></span>
+    <span>Диапазон: <b id="range">1–1000</b></span>
+  </div>
+
+  <button id="restart" class="restart">Играть снова</button>
+</div>
+
+<script>
+// ===== JavaScript: логика игры =====
+
+let secret;        // загаданное число
+let attempts;      // сколько попыток сделано
+let low, high;     // границы возможного диапазона
+
+// Верхняя граница игры — меняется в одном месте
+const MAX = 100;
+
+const guessEl    = document.getElementById("guess");
+const checkBtn   = document.getElementById("check");
+const hintEl     = document.getElementById("hint");
+const attemptsEl = document.getElementById("attempts");
+const rangeEl    = document.getElementById("range");
+const restartBtn = document.getElementById("restart");
+
+// Тексты и поле ввода подстраиваются под MAX автоматически
+document.querySelector(".subtitle").textContent = `Я загадал число от 1 до ${MAX}. Найди его.`;
+guessEl.max = MAX;
+
+// Начать новую игру
+function newGame() {
+  secret = Math.floor(Math.random() * MAX) + 1;  // 1..MAX
+  attempts = 0;
+  low = 1;
+  high = MAX;
+
+  attemptsEl.textContent = "0";
+  rangeEl.textContent = `1–${MAX}`;
+  hintEl.textContent = "Введи число и нажми «Проверить»";
+  hintEl.className = "hint";
+
+  guessEl.value = "";
+  guessEl.disabled = false;
+  checkBtn.disabled = false;
+  restartBtn.style.display = "none";
+  guessEl.focus();
+}
+
+// Проверить введённое число
+function check() {
+  const value = Number(guessEl.value);
+
+  // Проверка на дурака: пусто или вне диапазона
+  if (!guessEl.value || value < 1 || value > MAX) {
+    hintEl.textContent = `Нужно число от 1 до ${MAX}`;
+    hintEl.className = "hint bad";
+    return;
+  }
+
+  attempts++;
+  attemptsEl.textContent = attempts;
+
+  if (value === secret) {
+    hintEl.textContent = `Угадал! Это ${secret}. Попыток: ${attempts}`;
+    hintEl.className = "hint win";
+    guessEl.disabled = true;
+    checkBtn.disabled = true;
+    restartBtn.style.display = "inline-block";
+    return;
+  }
+
+  if (value < secret) {
+    hintEl.textContent = "Больше ↑";
+    hintEl.className = "hint up";
+    if (value >= low) low = value + 1;
+  } else {
+    hintEl.textContent = "Меньше ↓";
+    hintEl.className = "hint down";
+    if (value <= high) high = value - 1;
+  }
+
+  rangeEl.textContent = `${low}–${high}`;
+  guessEl.value = "";
+  guessEl.focus();
+}
+
+// Обработчики событий
+checkBtn.addEventListener("click", check);
+restartBtn.addEventListener("click", newGame);
+
+// Enter в поле ввода тоже проверяет
+guessEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") check();
+});
+
+newGame();
+</script>
+
+</body>
+</html>
